@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { format as formatDate, parseISO } from 'date-fns';
 
 import income from '../../assets/income.svg';
 import outcome from '../../assets/outcome.svg';
@@ -30,44 +29,32 @@ interface Balance {
   total: string;
 }
 
-interface Response {
-  transactions: Transaction[];
-  balance: Balance;
-}
-
 const Dashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [balance, setBalance] = useState<Balance>({} as Balance);
 
   useEffect(() => {
     async function loadTransactions(): Promise<void> {
-      const { data } = await api.get<Response>('/transactions');
+      const { data } = await api.get('/transactions');
 
-      const getFormatedValue = ({
-        value,
-        type,
-      }: Pick<Transaction, 'value' | 'type'>): string => {
-        if (type === 'outcome') {
-          return `- ${formatValue(value)}`;
-        }
-        return formatValue(value);
-      };
-
-      const getFormatedDate = (date: Date): string => {
-        return formatDate(date, "dd'/'MM'/'yyyy");
-      };
-
-      const currentTransactions = data.transactions.map(transaction => ({
-        ...transaction,
-        formattedDate: getFormatedDate(parseISO(transaction.created_at)),
-        formattedValue: getFormatedValue({
-          value: Number(transaction.value),
-          type: transaction.type,
+      const normalizedTransactions = data.transactions.map(
+        (transaction: Transaction) => ({
+          ...transaction,
+          formattedValue: formatValue(transaction.value),
+          formattedDate: new Date(transaction.created_at).toLocaleDateString(
+            'pt-br',
+          ),
         }),
-      }));
+      );
 
-      setTransactions(currentTransactions);
-      setBalance(data.balance);
+      const normalizedBalance = {
+        income: formatValue(data.balance.income),
+        outcome: formatValue(data.balance.outcome),
+        total: formatValue(data.balance.total),
+      };
+
+      setTransactions(normalizedTransactions);
+      setBalance(normalizedBalance);
     }
 
     loadTransactions();
@@ -84,27 +71,21 @@ const Dashboard: React.FC = () => {
                 <p>Entradas</p>
                 <img src={income} alt="Income" />
               </header>
-              <h1 data-testid="balance-income">
-                {formatValue(Number(balance.income))}
-              </h1>
+              <h1 data-testid="balance-income">{balance.income}</h1>
             </Card>
             <Card>
               <header>
                 <p>Saídas</p>
                 <img src={outcome} alt="Outcome" />
               </header>
-              <h1 data-testid="balance-outcome">
-                {formatValue(Number(balance.outcome))}
-              </h1>
+              <h1 data-testid="balance-outcome">{balance.outcome}</h1>
             </Card>
             <Card total>
               <header>
                 <p>Total</p>
                 <img src={total} alt="Total" />
               </header>
-              <h1 data-testid="balance-total">
-                {formatValue(Number(balance.total))}
-              </h1>
+              <h1 data-testid="balance-total">{balance.total}</h1>
             </Card>
           </CardContainer>
         )}
@@ -125,6 +106,7 @@ const Dashboard: React.FC = () => {
                 <tr key={transaction.id}>
                   <td className="title">{transaction.title}</td>
                   <td className={transaction.type}>
+                    {transaction.type === 'outcome' && ' - '}
                     {transaction.formattedValue}
                   </td>
                   <td>{transaction.category.title}</td>
@@ -132,6 +114,14 @@ const Dashboard: React.FC = () => {
                 </tr>
               ))}
             </tbody>
+
+            {!transactions.length && (
+              <tfoot>
+                <tr>
+                  <td colSpan={4}>Nenhuma transação</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </TableContainer>
       </Container>

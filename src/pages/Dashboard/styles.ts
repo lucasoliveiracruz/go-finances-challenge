@@ -104,5 +104,13 @@ export const TableContainer = styled.section`
     td:last-child {
       border-radius: 0 8px 8px 0;
     }
+
+    tfoot {
+      tr {
+        td {
+          background: #f0f2f5;
+        }
+      }
+    }
   }
 `;
